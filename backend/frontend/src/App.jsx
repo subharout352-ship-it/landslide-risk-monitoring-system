@@ -1,48 +1,41 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import "./App.css";
 
-const API_URL = "http://localhost:8000";
+// Fix Leaflet marker icons
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+const API_URL = "https://your-backend-name.onrender.com";
 
 function App() {
   const [locations, setLocations] = useState([]);
   const [sensors, setSensors] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [alerts, setAlerts] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [backendConnected, setBackendConnected] = useState(false);
-
-  // =========================================================
-  // Load Dashboard
-  // =========================================================
-
-  useEffect(() => {
-    loadDashboard();
-  }, []);
 
   const loadDashboard = async () => {
     try {
       setLoading(true);
       setError("");
-
-      // -----------------------------------------------------
-      // 1. Check Backend Health
-      // -----------------------------------------------------
-
-      const healthResponse = await axios.get(`${API_URL}/health`);
-
-      if (healthResponse.data.status === "healthy") {
-        setBackendConnected(true);
-      } else {
-        setBackendConnected(false);
-        throw new Error("Backend health check failed");
-      }
-
-      // -----------------------------------------------------
-      // 2. Get Dashboard Data
-      // -----------------------------------------------------
 
       const [
         locationsResponse,
@@ -56,106 +49,55 @@ function App() {
         axios.get(`${API_URL}/alerts/`),
       ]);
 
-      // -----------------------------------------------------
-      // 3. Store API Data
-      // -----------------------------------------------------
-
-      setLocations(
-        Array.isArray(locationsResponse.data)
-          ? locationsResponse.data
-          : []
-      );
-
-      setSensors(
-        Array.isArray(sensorsResponse.data)
-          ? sensorsResponse.data
-          : []
-      );
-
-      setPredictions(
-        Array.isArray(predictionsResponse.data)
-          ? predictionsResponse.data
-          : []
-      );
-
-      setAlerts(
-        Array.isArray(alertsResponse.data)
-          ? alertsResponse.data
-          : []
-      );
-
-      setError("");
+      setLocations(locationsResponse.data || []);
+      setSensors(sensorsResponse.data || []);
+      setPredictions(predictionsResponse.data || []);
+      setAlerts(alertsResponse.data || []);
     } catch (err) {
       console.error("Backend connection error:", err);
-
-      setBackendConnected(false);
-      setError(
-        "Unable to connect to backend. Please make sure FastAPI is running."
-      );
+      setError("Unable to connect to backend.");
     } finally {
       setLoading(false);
     }
   };
 
-  // =========================================================
-  // Latest Sensor
-  // =========================================================
+  useEffect(() => {
+    loadDashboard();
+  }, []);
 
   const latestSensor =
     sensors.length > 0
       ? sensors[sensors.length - 1]
       : null;
 
-  // =========================================================
-  // Latest Prediction
-  // =========================================================
-
   const latestPrediction =
     predictions.length > 0
       ? predictions[predictions.length - 1]
       : null;
 
-  // =========================================================
-  // Active Alerts
-  // =========================================================
-
   const activeAlerts = alerts.filter(
     (alert) => alert.is_active === true
   );
-
-  // =========================================================
-  // Loading Screen
-  // =========================================================
 
   if (loading) {
     return (
       <div className="loading">
         <h2>🌄 Loading Landslide Monitoring System...</h2>
-        <p>Connecting to FastAPI backend...</p>
+        <p>Please wait...</p>
       </div>
     );
   }
 
-  // =========================================================
-  // Main Dashboard
-  // =========================================================
-
   return (
     <div className="app">
 
-      {/* ===================================================
-          Header
-      =================================================== */}
-
+      {/* HEADER */}
       <header className="header">
         <div>
-          <h1>
-            🌄 Landslide Risk Monitoring System
-          </h1>
+          <h1>🌄 Landslide Risk Monitoring System</h1>
 
           <p>
-            AI-Based Early Warning System for
-            North Eastern Region (NER)
+            AI-Based Early Warning System for North Eastern Region (NER)
           </p>
         </div>
 
@@ -164,39 +106,19 @@ function App() {
         </button>
       </header>
 
-      {/* ===================================================
-          Backend Status
-      =================================================== */}
-
-      <div
-        className={
-          backendConnected
-            ? "backend-status connected"
-            : "backend-status disconnected"
-        }
-      >
-        {backendConnected
-          ? "🟢 Backend Connected"
-          : "🔴 Backend Not Connected"}
-      </div>
-
-      {/* ===================================================
-          Error Message
-      =================================================== */}
-
-      {error && (
+      {/* BACKEND STATUS */}
+      {error ? (
         <div className="error">
           ⚠️ {error}
         </div>
+      ) : (
+        <div className="success">
+          🟢 Backend Connected
+        </div>
       )}
 
-      {/* ===================================================
-          Dashboard Cards
-      =================================================== */}
-
+      {/* SUMMARY CARDS */}
       <section className="cards">
-
-        {/* Locations */}
 
         <div className="card">
           <h3>📍 Locations</h3>
@@ -205,12 +127,8 @@ function App() {
             {locations.length}
           </div>
 
-          <p>
-            Monitored locations
-          </p>
+          <p>Monitored locations</p>
         </div>
-
-        {/* Rainfall */}
 
         <div className="card">
           <h3>🌧️ Rainfall</h3>
@@ -221,12 +139,8 @@ function App() {
               : "N/A"}
           </div>
 
-          <p>
-            Latest reading
-          </p>
+          <p>Latest reading</p>
         </div>
-
-        {/* Risk Level */}
 
         <div className="card">
           <h3>📊 Risk Level</h3>
@@ -237,12 +151,8 @@ function App() {
               : "N/A"}
           </div>
 
-          <p>
-            Latest prediction
-          </p>
+          <p>Latest prediction</p>
         </div>
-
-        {/* Active Alerts */}
 
         <div className="card">
           <h3>🚨 Active Alerts</h3>
@@ -251,31 +161,21 @@ function App() {
             {activeAlerts.length}
           </div>
 
-          <p>
-            Current warnings
-          </p>
+          <p>Current warnings</p>
         </div>
 
       </section>
 
-      {/* ===================================================
-          Current Landslide Risk
-      =================================================== */}
-
+      {/* CURRENT RISK */}
       <section className="panel">
 
-        <h2>
-          ⚠️ Current Landslide Risk
-        </h2>
+        <h2>⚠️ Current Landslide Risk</h2>
 
         {latestPrediction ? (
-
           <div className="risk-box">
 
             <div>
-              <span>
-                Risk Level
-              </span>
+              <span>Risk Level</span>
 
               <strong>
                 {latestPrediction.risk_level}
@@ -283,9 +183,7 @@ function App() {
             </div>
 
             <div>
-              <span>
-                Risk Score
-              </span>
+              <span>Risk Score</span>
 
               <strong>
                 {latestPrediction.risk_score}
@@ -293,9 +191,7 @@ function App() {
             </div>
 
             <div>
-              <span>
-                Location ID
-              </span>
+              <span>Location ID</span>
 
               <strong>
                 {latestPrediction.location_id}
@@ -303,35 +199,22 @@ function App() {
             </div>
 
           </div>
-
         ) : (
-
-          <p>
-            No prediction available.
-          </p>
-
+          <p>No prediction available.</p>
         )}
 
       </section>
 
-      {/* ===================================================
-          Latest Environmental Data
-      =================================================== */}
-
+      {/* ENVIRONMENTAL DATA */}
       <section className="panel">
 
-        <h2>
-          🌡️ Latest Environmental Data
-        </h2>
+        <h2>🌡️ Latest Environmental Data</h2>
 
         {latestSensor ? (
-
           <div className="sensor-grid">
 
             <div>
-              <span>
-                🌧️ Rainfall
-              </span>
+              <span>🌧️ Rainfall</span>
 
               <strong>
                 {latestSensor.rainfall} mm
@@ -339,9 +222,7 @@ function App() {
             </div>
 
             <div>
-              <span>
-                💧 Soil Moisture
-              </span>
+              <span>💧 Soil Moisture</span>
 
               <strong>
                 {latestSensor.soil_moisture}
@@ -349,9 +230,7 @@ function App() {
             </div>
 
             <div>
-              <span>
-                🌡️ Temperature
-              </span>
+              <span>🌡️ Temperature</span>
 
               <strong>
                 {latestSensor.temperature} °C
@@ -359,9 +238,7 @@ function App() {
             </div>
 
             <div>
-              <span>
-                💦 Humidity
-              </span>
+              <span>💦 Humidity</span>
 
               <strong>
                 {latestSensor.humidity} %
@@ -369,9 +246,7 @@ function App() {
             </div>
 
             <div>
-              <span>
-                ⛰️ Slope
-              </span>
+              <span>⛰️ Slope</span>
 
               <strong>
                 {latestSensor.slope}°
@@ -379,35 +254,82 @@ function App() {
             </div>
 
           </div>
-
         ) : (
-
-          <p>
-            No sensor data available.
-          </p>
-
+          <p>No sensor data available.</p>
         )}
 
       </section>
 
-      {/* ===================================================
-          Recent Alerts
-      =================================================== */}
-
+      {/* MAP */}
       <section className="panel">
 
-        <h2>
-          🚨 Recent Alerts
-        </h2>
+        <h2>🗺️ NER Landslide Monitoring Map</h2>
+
+        <div className="map-container">
+
+          <MapContainer
+            center={[26.5, 93.0]}
+            zoom={6}
+            scrollWheelZoom={true}
+            style={{
+              height: "450px",
+              width: "100%",
+            }}
+          >
+
+            <TileLayer
+              attribution='&copy; OpenStreetMap contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+
+            {locations.map((location) => (
+
+              <Marker
+                key={location.id}
+                position={[
+                  location.latitude,
+                  location.longitude,
+                ]}
+              >
+
+                <Popup>
+
+                  <strong>
+                    {location.name}
+                  </strong>
+
+                  <br />
+
+                  Latitude: {location.latitude}
+
+                  <br />
+
+                  Longitude: {location.longitude}
+
+                  <br />
+
+                  Location ID: {location.id}
+
+                </Popup>
+
+              </Marker>
+
+            ))}
+
+          </MapContainer>
+
+        </div>
+
+      </section>
+
+      {/* RECENT ALERTS */}
+      <section className="panel">
+
+        <h2>🚨 Recent Alerts</h2>
 
         {alerts.length === 0 ? (
-
-          <p>
-            No alerts available.
-          </p>
-
+          <p>No alerts available.</p>
         ) : (
-
           <div className="alerts">
 
             {alerts
@@ -441,29 +363,18 @@ function App() {
               ))}
 
           </div>
-
         )}
 
       </section>
 
-      {/* ===================================================
-          Monitored Locations
-      =================================================== */}
-
+      {/* MONITORED LOCATIONS */}
       <section className="panel">
 
-        <h2>
-          📍 Monitored Locations
-        </h2>
+        <h2>📍 Monitored Locations</h2>
 
         {locations.length === 0 ? (
-
-          <p>
-            No locations available.
-          </p>
-
+          <p>No monitored locations available.</p>
         ) : (
-
           <div className="locations">
 
             {locations.map((location) => (
@@ -490,20 +401,15 @@ function App() {
             ))}
 
           </div>
-
         )}
 
       </section>
 
-      {/* ===================================================
-          Footer
-      =================================================== */}
-
+      {/* FOOTER */}
       <footer>
 
         <p>
-          AI-Based Early Warning and Landslide Risk
-          Monitoring System
+          AI-Based Early Warning and Landslide Risk Monitoring System
         </p>
 
         <p>
@@ -515,5 +421,4 @@ function App() {
     </div>
   );
 }
-
 export default App;
