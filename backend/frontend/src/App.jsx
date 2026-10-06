@@ -30,7 +30,7 @@ L.Icon.Default.mergeOptions({
 // BACKEND URL
 // ===============================
 // IMPORTANT: Replace this with your actual Render backend URL.
-const API_URL = "https://YOUR-BACKEND-NAME.onrender.com";
+const API_URL = "https://landslide-risk-monitoring-system.onrender.com";
 
 function App() {
   const [locations, setLocations] = useState([]);
